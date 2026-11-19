@@ -34,6 +34,7 @@ constexpr int kValuesPerDetection =
 static_assert(org_photonvision_napa_NapaJNI_kLensNone == NAPA_LENS_NONE);
 static_assert(org_photonvision_napa_NapaJNI_kLensBrownConrady ==
               NAPA_LENS_BROWN_CONRADY);
+static_assert(org_photonvision_napa_NapaJNI_kLensFisheye == NAPA_LENS_FISHEYE);
 }  // namespace
 
 extern "C" {
