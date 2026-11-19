@@ -76,6 +76,15 @@ ext.outputsFolder = file("$buildDir/outputs")
 println("Building for $nativeName")
 
 // The library CMake built into cmake_build (see README.md)
+def nativeLibraries = fileTree("${projectDir}/cmake_build") {
+    include "bin/**/*.dll", "lib/**/*.so", "lib/**/*.dylib"
+}
+ext.requireNativeLibrary = {
+    if (nativeLibraries.isEmpty()) {
+        throw new GradleException("No napa_jni library in cmake_build: build it with CMake first (see README.md)")
+    }
+}
+
 tasks.register('copyNativeLibrary', Sync) {
     from "${projectDir}/cmake_build/bin/"
     from "${projectDir}/cmake_build/lib/"
@@ -86,8 +95,9 @@ tasks.register('copyNativeLibrary', Sync) {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
-    dependsOn copyNativeLibrary
-    // The tests load napa_jni from here
+    // The tests load napa_jni from here, so a rebuilt library reruns them
+    inputs.files(copyNativeLibrary)
+    doFirst { requireNativeLibrary() }
     systemProperty 'napa.libraryDir', "${outputsFolder}/${nativeName}/shared"
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     testLogging {

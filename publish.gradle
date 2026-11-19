@@ -8,6 +8,7 @@ def license = file("$rootDir/LICENSE")
 def externalLicenses = file("$rootDir/ExternalLicenses")
 
 task nativeLibraryJar(type: Jar, dependsOn: copyNativeLibrary) {
+    doFirst { requireNativeLibrary() }
     archiveClassifier = nativeName
     from outputsFolder
     from license
