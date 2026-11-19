@@ -70,10 +70,10 @@ spotless {
     }
 }
 
-def nativeName = wpilibTools.platformMapper.platformPath
+def platformPath = wpilibTools.platformMapper.platformPath
 ext.outputsFolder = file("$buildDir/outputs")
 
-println("Building for $nativeName")
+println("Building for $platformPath")
 
 // The library CMake built into cmake_build (see README.md)
 def nativeLibraries = fileTree("${projectDir}/cmake_build") {
@@ -88,7 +88,7 @@ ext.requireNativeLibrary = {
 tasks.register('copyNativeLibrary', Sync) {
     from "${projectDir}/cmake_build/bin/"
     from "${projectDir}/cmake_build/lib/"
-    into "${outputsFolder}/${nativeName}/shared/"
+    into "${outputsFolder}/${platformPath}/shared/"
     include "**/*.dll", "**/*.so", "**/*.dylib"
     includeEmptyDirs = false
 }
@@ -98,7 +98,7 @@ tasks.named('test', Test) {
     // The tests load napa_jni from here, so a rebuilt library reruns them
     inputs.files(copyNativeLibrary)
     doFirst { requireNativeLibrary() }
-    systemProperty 'napa.libraryDir', "${outputsFolder}/${nativeName}/shared"
+    systemProperty 'napa.libraryDir', "${outputsFolder}/${platformPath}/shared"
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     testLogging {
         events "passed", "failed"

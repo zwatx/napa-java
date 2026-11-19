@@ -1,6 +1,6 @@
 apply plugin: 'maven-publish'
 
-def nativeName = wpilibTools.platformMapper.wpilibClassifier;
+def classifier = wpilibTools.platformMapper.wpilibClassifier
 def artifactGroupId = 'org.photonvision'
 def baseArtifactId = "photon-napa"
 
@@ -9,7 +9,7 @@ def externalLicenses = file("$rootDir/ExternalLicenses")
 
 task nativeLibraryJar(type: Jar, dependsOn: copyNativeLibrary) {
     doFirst { requireNativeLibrary() }
-    archiveClassifier = nativeName
+    archiveClassifier = classifier
     from outputsFolder
     from license
     from externalLicenses
@@ -46,14 +46,14 @@ publishing {
         mavenJava(MavenPublication) {
             groupId = artifactGroupId
             artifactId = "${baseArtifactId}-java"
-            version = pubVersion;
+            version = pubVersion
 
             from components.java
         }
         mavenJNI(MavenPublication) {
             groupId = artifactGroupId
             artifactId = "${baseArtifactId}-jni"
-            version = pubVersion;
+            version = pubVersion
 
             artifact nativeLibraryJar
         }
