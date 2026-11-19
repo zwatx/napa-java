@@ -30,7 +30,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 add_library(napa_jni SHARED src/main/native/napa_jni.cpp)
-target_include_directories(napa_jni SYSTEM PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(napa_jni PRIVATE napa::napa napa_jni_headers)
 if(MSVC AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
     # NAPA 0.6.0 chooses its SSSE3 code with __builtin_cpu_supports, which lives
