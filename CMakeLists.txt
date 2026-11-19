@@ -31,20 +31,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 add_library(napa_jni SHARED src/main/native/napa_jni.cpp)
 target_link_libraries(napa_jni PRIVATE napa::napa napa_jni_headers)
-if(MSVC AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    # NAPA 0.6.0 chooses its SSSE3 code with __builtin_cpu_supports, which lives
-    # in clang's builtins library; clang-cl doesn't link that library by default
-    execute_process(
-        COMMAND
-            ${CMAKE_C_COMPILER} /clang:--rtlib=compiler-rt
-            /clang:-print-libgcc-file-name
-        OUTPUT_VARIABLE CLANG_BUILTINS
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        COMMAND_ERROR_IS_FATAL ANY
-    )
-    message(STATUS "Linking clang's builtins: ${CLANG_BUILTINS}")
-    target_link_libraries(napa_jni PRIVATE ${CLANG_BUILTINS})
-endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # On Linux, export only the JNI functions, not NAPA's C API from the static
     # library
