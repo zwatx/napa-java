@@ -33,8 +33,8 @@ To try a local build in PhotonVision, publish it with a version and point Photon
 
 ## Publishing
 
-CI publishes to PhotonVision's Maven on pushes to `main` and `v*` tags once the `ARTIFACTORY_API_KEY` secret is set; until
-then it only builds and tests. The version comes from the latest `v*` tag (`git describe`), so tag a release before
+CI publishes to PhotonVision's Maven on pushes to `main` and `v*` tags once the `ARTIFACTORY_API_KEY` secret is set;
+until then it only builds and tests. The version comes from the latest `v*` tag (`git describe`), so tag a release before
 setting the secret, or the first publish is `dev-unknown`.
 
 ## Updating NAPA
@@ -44,5 +44,6 @@ follow `NAPA/src/napa_vision/_native/napa_core.h`; CMake generates the JNI heade
 
 ## License
 
-GPL-3.0-only, as NAPA is (see [LICENSE](LICENSE) and [ExternalLicenses](ExternalLicenses)). The tag families'
+The bindings' own files carry PhotonVision's GPL-3.0-or-later header; the napa_jni library includes NAPA and is
+distributed under GPL-3.0-only (see [LICENSE](LICENSE) and [ExternalLicenses](ExternalLicenses)). The tag families'
 codewords come from AprilTag under its BSD license.
