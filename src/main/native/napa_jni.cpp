@@ -24,8 +24,8 @@
 #include "org_photonvision_napa_NapaJNI.h"
 
 namespace {
-// Tags beyond this many in one frame are dropped. PhotonVision reports at most
-// 127 targets, but its stress-test image alone has 280.
+// Tags beyond this many in one frame are dropped: far more than the 127 targets
+// PhotonVision reports, and than the 280 in its stress-test image.
 constexpr int kMaxDetections = 1024;
 // OpenCV's longest distortion model
 constexpr jsize kMaxDistortionCoefficients = 14;
@@ -167,7 +167,7 @@ Java_org_photonvision_napa_NapaJNI_detect
       return nullptr;
     }
   }
-  int count =
+  const int count =
       napa_detect(detector, reinterpret_cast<const uint8_t*>(dataAddr), width,
                   height, stride, &params, detections.get(), kMaxDetections);
   if (count < 0) {

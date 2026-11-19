@@ -34,10 +34,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class NapaJNITest {
-    // A tag36h11 tag, ID 0, drawn 12 pixels per cell with its black square's top-left pixel at
-    // (kLeft, kTop), in an image whose rows are padded past its width
-    // NAPA's codeword for ID 0: data cells row-major, a set bit for a white cell
+    // NAPA's tag36h11 codeword for ID 0: data cells row-major, a set bit for a white cell
     private static final long kTag0 = 0x21a146babL;
+
+    // The tag is drawn kCell pixels per cell with its black square's top-left pixel at
+    // (kLeft, kTop), in an image whose rows are padded past its width
     private static final int kCell = 12;
     private static final int kLeft = 40;
     private static final int kTop = 32;
@@ -177,11 +178,15 @@ public class NapaJNITest {
         assertNull(detect(m_handle, 0, kMinTagPx));
         assertEquals(0, NapaJNI.create("tag99h99"));
         assertEquals(0, NapaJNI.create(null));
-        assertEquals(3, NapaJNI.recommendedHamming("tag36h11"));
-        assertEquals(-1, NapaJNI.recommendedHamming("tag99h99"));
-        assertEquals(-1, NapaJNI.recommendedHamming(null));
         assertEquals(-1, NapaJNI.setThreads(0, 2));
         assertEquals(-1, NapaJNI.setThreads(m_handle, 0));
         assertEquals(-1, NapaJNI.setThreads(m_handle, 17));
+    }
+
+    @Test
+    public void testRecommendedHamming() {
+        assertEquals(3, NapaJNI.recommendedHamming("tag36h11"));
+        assertEquals(-1, NapaJNI.recommendedHamming("tag99h99"));
+        assertEquals(-1, NapaJNI.recommendedHamming(null));
     }
 }
