@@ -21,14 +21,21 @@ cmake --build cmake_build
 ./gradlew build
 ```
 
-`./gradlew build` packages the library CMake built and runs the tests against it. On Windows, configure with
-`-T ClangCl -A x64 -G "Visual Studio 17 2022"`; on macOS, add `-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`.
+`./gradlew build` packages the library CMake built and runs the tests against it. On Windows, configure as CI does,
+with Ninja and clang-cl: `-G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl`. On macOS, add
+`-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`.
 
 To try a local build in PhotonVision, publish it with a version and point PhotonVision's `napaVersion` at it:
 
 ```bash
 ./gradlew -PversionString=dev-local publishToMavenLocal
 ```
+
+## Publishing
+
+CI publishes to PhotonVision's Maven on pushes to `main` and `v*` tags once the `ARTIFACTORY_API_KEY` secret is set; until
+then it only builds and tests. The version comes from the latest `v*` tag (`git describe`), so tag a release before
+setting the secret, or the first publish is `dev-unknown`.
 
 ## Updating NAPA
 
