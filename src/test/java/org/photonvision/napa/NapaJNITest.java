@@ -36,8 +36,8 @@ import org.junit.jupiter.api.Test;
 public class NapaJNITest {
     // A tag36h11 tag, ID 0, drawn 12 pixels per cell with its black square's top-left pixel at
     // (kLeft, kTop), in an image whose rows are padded past its width
-    private static final long kTag0 =
-            0x21a146babL; // NAPA's codeword: data cells row-major, white set
+    // NAPA's codeword for ID 0: data cells row-major, a set bit for a white cell
+    private static final long kTag0 = 0x21a146babL;
     private static final int kCell = 12;
     private static final int kLeft = 40;
     private static final int kTop = 32;
@@ -105,8 +105,12 @@ public class NapaJNITest {
     }
 
     private double[] detect(long handle) {
-        return NapaJNI.detect(
-                handle, m_image.address(), kWidth, kHeight, kStride, kMinTagPx, 3, 20, 22, 25);
+        return detect(handle, m_image.address(), kMinTagPx);
+    }
+
+    // NAPA's defaults for the other parameters, as PhotonVision passes them
+    private static double[] detect(long handle, long dataAddr, int minTagPx) {
+        return NapaJNI.detect(handle, dataAddr, kWidth, kHeight, kStride, minTagPx, 3, 20, 22, 25);
     }
 
     // Asserts one tag 0 whose corners are the black square's, in OpenCV's order (the tag's own
@@ -143,7 +147,6 @@ public class NapaJNITest {
         double[] serial = detect(m_handle);
         assertEquals(0, NapaJNI.setThreads(m_handle, 4));
         assertArrayEquals(serial, detect(m_handle));
-        assertEquals(-1, NapaJNI.setThreads(m_handle, 0));
     }
 
     @Test
@@ -169,15 +172,16 @@ public class NapaJNITest {
 
     @Test
     public void testInvalidInput() {
-        assertNull(
-                NapaJNI.detect(m_handle, m_image.address(), kWidth, kHeight, kStride, 0, 3, 20, 22, 25));
-        assertNull(NapaJNI.detect(0, m_image.address(), kWidth, kHeight, kStride, 16, 3, 20, 22, 25));
-        assertNull(NapaJNI.detect(m_handle, 0, kWidth, kHeight, kStride, 16, 3, 20, 22, 25));
+        assertNull(detect(m_handle, m_image.address(), 0));
+        assertNull(detect(0, m_image.address(), kMinTagPx));
+        assertNull(detect(m_handle, 0, kMinTagPx));
         assertEquals(0, NapaJNI.create("tag99h99"));
         assertEquals(0, NapaJNI.create(null));
         assertEquals(3, NapaJNI.recommendedHamming("tag36h11"));
         assertEquals(-1, NapaJNI.recommendedHamming("tag99h99"));
         assertEquals(-1, NapaJNI.recommendedHamming(null));
         assertEquals(-1, NapaJNI.setThreads(0, 2));
+        assertEquals(-1, NapaJNI.setThreads(m_handle, 0));
+        assertEquals(-1, NapaJNI.setThreads(m_handle, 17));
     }
 }

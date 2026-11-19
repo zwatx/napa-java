@@ -79,7 +79,8 @@ public class NapaJNI {
      * @param handle a handle from {@link #create}
      * @param model {@link #kLensNone} to clear it, {@link #kLensBrownConrady} or {@link
      *     #kLensFisheye}
-     * @param intrinsics fx, fy, cx, cy, skew; may be null with {@link #kLensNone}
+     * @param intrinsics fx, fy, cx, cy, skew (the camera matrix's K[0][1], which only {@link
+     *     #kLensFisheye} uses); may be null with {@link #kLensNone}
      * @param coefficients the distortion coefficients: 4, 5, 8, 12 or 14 of OpenCV's (tilt terms 0)
      *     for {@link #kLensBrownConrady}, or cv::fisheye's 4 for {@link #kLensFisheye}; may be null
      *     with {@link #kLensNone}
@@ -89,7 +90,7 @@ public class NapaJNI {
             long handle, int model, double[] intrinsics, double[] coefficients);
 
     /**
-     * Detects tags in an 8-bit grayscale image.
+     * Detects tags in an 8-bit grayscale image. At most 1024 tags are returned; any more are dropped.
      *
      * @param handle a handle from {@link #create}
      * @param dataAddr the address of the image's first pixel
@@ -100,11 +101,12 @@ public class NapaJNI {
      *     30000)
      * @param maxHamming payload bits to correct (0 to 3), capped by the family
      * @param minContrast grey levels between a tag's black and its white quiet zone (1 to 255)
-     * @param minBorderCells dark border cells required, out of 28
+     * @param minBorderCells dark border cells required, out of 28 (0 to 28)
      * @param sharpeningX100 cell sharpening strength times 100 (0 to 100); upstream AprilTag uses 25
      * @return {@link #kValuesPerDetection} values per tag, its corners as x, y pairs in OpenCV's
      *     order with (0, 0) at the center of the top-left pixel; or null if the image or parameters
-     *     are invalid, or NAPA ran out of memory
+     *     are invalid, or NAPA ran out of memory (a failed Java allocation throws OutOfMemoryError
+     *     instead)
      */
     public static native double[] detect(
             long handle,
