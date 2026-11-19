@@ -27,6 +27,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,14 +52,17 @@ public class NapaJNITest {
 
     @BeforeAll
     public static void loadLibrary() {
-        String dir = System.getProperty("napa.libraryDir");
+        String dir =
+                Objects.requireNonNull(
+                        System.getProperty("napa.libraryDir"),
+                        "Set napa.libraryDir to the folder holding napa_jni (Gradle's test task does)");
         System.load(Path.of(dir, System.mapLibraryName("napa_jni")).toAbsolutePath().toString());
     }
 
     @BeforeEach
     public void setup() {
         m_arena = Arena.ofConfined();
-        m_image = drawTag();
+        m_image = drawTag(0);
         m_handle = NapaJNI.create("tag36h11");
         assertNotEquals(0, m_handle);
     }
@@ -69,7 +73,8 @@ public class NapaJNITest {
         m_arena.close();
     }
 
-    private MemorySegment drawTag() {
+    // Draws the tag turned clockwise by quarterTurns quarter turns
+    private MemorySegment drawTag(int quarterTurns) {
         MemorySegment image = m_arena.allocate((long) kStride * kHeight);
         image.fill((byte) 0); // padding past each row's width stays black
         for (int y = 0; y < kHeight; y++) {
@@ -82,7 +87,15 @@ public class NapaJNITest {
                 } else if (cellX == 0 || cellX == 7 || cellY == 0 || cellY == 7) {
                     white = false; // the black border
                 } else {
-                    int bit = 6 * (cellY - 1) + (cellX - 1);
+                    // The tag's own cell at this image cell
+                    int tagX = cellX;
+                    int tagY = cellY;
+                    for (int turn = 0; turn < quarterTurns; turn++) {
+                        int x0 = tagX;
+                        tagX = tagY;
+                        tagY = 7 - x0;
+                    }
+                    int bit = 6 * (tagY - 1) + (tagX - 1);
                     white = ((kTag0 >> (35 - bit)) & 1) != 0;
                 }
                 image.set(ValueLayout.JAVA_BYTE, (long) y * kStride + x, (byte) (white ? 255 : 0));
@@ -96,29 +109,33 @@ public class NapaJNITest {
                 handle, m_image.address(), kWidth, kHeight, kStride, kMinTagPx, 3, 20, 22, 25);
     }
 
-    // Asserts one tag 0, its corners at the black square's, with (0, 0) at the top-left pixel's
-    // center as NapaJNI documents
-    private static void assertTag0(double[] result) {
+    // Asserts one tag 0 whose corners are the black square's, in OpenCV's order (the tag's own
+    // top-left, top-right, bottom-right, bottom-left) for a tag turned quarterTurns clockwise, with
+    // (0, 0) at the top-left pixel's center as NapaJNI documents
+    private static void assertTag0(double[] result, int quarterTurns) {
         assertEquals(NapaJNI.kValuesPerDetection, result.length);
         assertEquals(0, result[0]); // ID
         assertEquals(0, result[1]); // hamming
         double low = -0.5;
         double high = 8 * kCell - 0.5;
-        double[][] expected = {{low, low}, {high, low}, {high, high}, {low, high}};
+        // The image's top-left, top-right, bottom-right and bottom-left corners of the square
+        double[][] square = {{low, low}, {high, low}, {high, high}, {low, high}};
         for (int k = 0; k < 4; k++) {
+            double[] expected = square[(k + quarterTurns) % 4];
             double x = result[3 + 2 * k] - kLeft;
             double y = result[4 + 2 * k] - kTop;
-            boolean near = false;
-            for (double[] corner : expected) {
-                near |= Math.hypot(x - corner[0], y - corner[1]) < 0.5;
-            }
-            assertTrue(near, "corner (" + x + ", " + y + ") isn't at the tag's");
+            assertTrue(
+                    Math.hypot(x - expected[0], y - expected[1]) < 0.5,
+                    "corner " + k + " is at (" + x + ", " + y + ") with " + quarterTurns + " turns");
         }
     }
 
     @Test
-    public void testFindsATag() {
-        assertTag0(detect(m_handle));
+    public void testFindsATagInEveryOrientation() {
+        for (int quarterTurns = 0; quarterTurns < 4; quarterTurns++) {
+            m_image = drawTag(quarterTurns);
+            assertTag0(detect(m_handle), quarterTurns);
+        }
     }
 
     @Test
