@@ -1,0 +1,166 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package org.photonvision.napa;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+public class NapaJNITest {
+    // A tag36h11 tag, ID 0, drawn 12 pixels per cell with its black square's top-left pixel at
+    // (kLeft, kTop), in an image whose rows are padded past its width
+    private static final long kTag0 =
+            0x21a146babL; // NAPA's codeword: data cells row-major, white set
+    private static final int kCell = 12;
+    private static final int kLeft = 40;
+    private static final int kTop = 32;
+    private static final int kWidth = 200;
+    private static final int kHeight = 160;
+    private static final int kStride = 208;
+    private static final int kMinTagPx = 16;
+
+    private Arena m_arena;
+    private MemorySegment m_image;
+    private long m_handle;
+
+    @BeforeAll
+    public static void loadLibrary() {
+        String dir = System.getProperty("napa.libraryDir");
+        System.load(Path.of(dir, System.mapLibraryName("napa_jni")).toAbsolutePath().toString());
+    }
+
+    @BeforeEach
+    public void setup() {
+        m_arena = Arena.ofConfined();
+        m_image = drawTag();
+        m_handle = NapaJNI.create("tag36h11");
+        assertNotEquals(0, m_handle);
+    }
+
+    @AfterEach
+    public void teardown() {
+        NapaJNI.destroy(m_handle);
+        m_arena.close();
+    }
+
+    private MemorySegment drawTag() {
+        MemorySegment image = m_arena.allocate((long) kStride * kHeight);
+        image.fill((byte) 0); // padding past each row's width stays black
+        for (int y = 0; y < kHeight; y++) {
+            for (int x = 0; x < kWidth; x++) {
+                int cellX = Math.floorDiv(x - kLeft, kCell);
+                int cellY = Math.floorDiv(y - kTop, kCell);
+                boolean white;
+                if (cellX < 0 || cellX > 7 || cellY < 0 || cellY > 7) {
+                    white = true; // around the tag
+                } else if (cellX == 0 || cellX == 7 || cellY == 0 || cellY == 7) {
+                    white = false; // the black border
+                } else {
+                    int bit = 6 * (cellY - 1) + (cellX - 1);
+                    white = ((kTag0 >> (35 - bit)) & 1) != 0;
+                }
+                image.set(ValueLayout.JAVA_BYTE, (long) y * kStride + x, (byte) (white ? 255 : 0));
+            }
+        }
+        return image;
+    }
+
+    private double[] detect(long handle) {
+        return NapaJNI.detect(
+                handle, m_image.address(), kWidth, kHeight, kStride, kMinTagPx, 3, 20, 22, 25);
+    }
+
+    // Asserts one tag 0, its corners at the black square's, with (0, 0) at the top-left pixel's
+    // center as NapaJNI documents
+    private static void assertTag0(double[] result) {
+        assertEquals(NapaJNI.kValuesPerDetection, result.length);
+        assertEquals(0, result[0]); // ID
+        assertEquals(0, result[1]); // hamming
+        double low = -0.5;
+        double high = 8 * kCell - 0.5;
+        double[][] expected = {{low, low}, {high, low}, {high, high}, {low, high}};
+        for (int k = 0; k < 4; k++) {
+            double x = result[3 + 2 * k] - kLeft;
+            double y = result[4 + 2 * k] - kTop;
+            boolean near = false;
+            for (double[] corner : expected) {
+                near |= Math.hypot(x - corner[0], y - corner[1]) < 0.5;
+            }
+            assertTrue(near, "corner (" + x + ", " + y + ") isn't at the tag's");
+        }
+    }
+
+    @Test
+    public void testFindsATag() {
+        assertTag0(detect(m_handle));
+    }
+
+    @Test
+    public void testThreadsFindTheSameTag() {
+        double[] serial = detect(m_handle);
+        assertEquals(0, NapaJNI.setThreads(m_handle, 4));
+        assertArrayEquals(serial, detect(m_handle));
+        assertEquals(-1, NapaJNI.setThreads(m_handle, 0));
+    }
+
+    @Test
+    public void testLens() {
+        double[] plain = detect(m_handle);
+        double[] intrinsics = {300, 300, kWidth / 2.0, kHeight / 2.0, 0};
+        // An undistorted lens fits sides as pixels do
+        assertEquals(
+                0, NapaJNI.setLens(m_handle, NapaJNI.kLensBrownConrady, intrinsics, new double[5]));
+        double[] throughLens = detect(m_handle);
+        for (int i = 0; i < plain.length; i++) {
+            assertEquals(plain[i], throughLens[i], 1e-6);
+        }
+        assertEquals(0, NapaJNI.setLens(m_handle, NapaJNI.kLensNone, null, null));
+        assertArrayEquals(plain, detect(m_handle));
+
+        assertEquals(
+                -1, NapaJNI.setLens(m_handle, NapaJNI.kLensBrownConrady, intrinsics, new double[3]));
+        assertEquals(
+                -1, NapaJNI.setLens(m_handle, NapaJNI.kLensBrownConrady, intrinsics, new double[15]));
+        assertEquals(-1, NapaJNI.setLens(m_handle, NapaJNI.kLensBrownConrady, new double[4], null));
+    }
+
+    @Test
+    public void testInvalidInput() {
+        assertNull(
+                NapaJNI.detect(m_handle, m_image.address(), kWidth, kHeight, kStride, 0, 3, 20, 22, 25));
+        assertNull(NapaJNI.detect(0, m_image.address(), kWidth, kHeight, kStride, 16, 3, 20, 22, 25));
+        assertNull(NapaJNI.detect(m_handle, 0, kWidth, kHeight, kStride, 16, 3, 20, 22, 25));
+        assertEquals(0, NapaJNI.create("tag99h99"));
+        assertEquals(0, NapaJNI.create(null));
+        assertEquals(3, NapaJNI.recommendedHamming("tag36h11"));
+        assertEquals(-1, NapaJNI.recommendedHamming("tag99h99"));
+        assertEquals(-1, NapaJNI.recommendedHamming(null));
+        assertEquals(-1, NapaJNI.setThreads(0, 2));
+    }
+}
