@@ -1,7 +1,3 @@
-import java.nio.file.Path
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-
 ext.getCurrentVersion = {
     String tagIsh = "dev-unknown"
     try {
@@ -22,15 +18,4 @@ ext.getCurrentVersion = {
 
 if (!ext.has("versionString")) {
     ext.versionString = getCurrentVersion()
-}
-
-ext.writePhotonVersionFile = {File versionFileIn, Path path, String version ->
-    println("Writing " + version + " to " + path.toAbsolutePath().toString())
-    String date = DateTimeFormatter.ofPattern("yyyy-M-d hh:mm:ss").format(LocalDateTime.now())
-    File versionFileOut = new File(path.toAbsolutePath().toString())
-    versionFileOut.delete()
-    def read = versionFileIn.text.replace('${version}', version).replace('${date}', date)
-    if (!versionFileOut.parentFile.exists()) versionFileOut.parentFile.mkdirs()
-    if (!versionFileOut.exists()) versionFileOut.createNewFile()
-    versionFileOut.write(read)
 }
