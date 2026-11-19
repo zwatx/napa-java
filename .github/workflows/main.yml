@@ -43,8 +43,7 @@ jobs:
 
     - name: Fetch tags
       run: git fetch --tags --force
-    - run: git describe --tags
-      continue-on-error: true
+    - run: git describe --tags --always
 
     - uses: actions/setup-java@v5
       with:
