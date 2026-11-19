@@ -21,7 +21,7 @@ package org.photonvision.napa;
  * Bindings for NAPA's AprilTag detector (https://github.com/zwatx/NAPA). Load the napa_jni library
  * before calling them. A handle is not thread-safe; use one per camera.
  */
-public class NapaJNI {
+public final class NapaJNI {
     /** Values per tag in {@link #detect}'s result: ID, hamming, decision margin, 8 corner values. */
     public static final int kValuesPerDetection = 11;
 
