@@ -1,0 +1,98 @@
+plugins {
+    id "java"
+    id 'org.photonvision.tools.WpilibTools' version '3.1.0-photon'
+    id "com.diffplug.spotless" version "8.1.0"
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Configure the version number.
+apply from: "versioningHelper.gradle"
+
+ext {
+    pubVersion = versionString
+    isDev = pubVersion.startsWith("dev")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withJavadocJar()
+    withSourcesJar()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
+}
+
+spotless {
+    java {
+        target fileTree('.') {
+            include '**/*.java'
+            exclude '**/build/**', '**/build-*/**', "**/cmake_build/**", 'NAPA/**'
+        }
+        toggleOffOn()
+        googleJavaFormat()
+        leadingSpacesToTabs(2)
+        leadingTabsToSpaces(4)
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    groovyGradle {
+        target fileTree('.') {
+            include '**/*.gradle'
+            exclude '**/build/**', '**/build-*/**', "**/cmake_build/**", 'NAPA/**'
+        }
+        greclipse()
+        leadingTabsToSpaces(4)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'misc', {
+        target fileTree('.') {
+            include '**/*.md', '**/.gitignore'
+            exclude '**/build/**', '**/build-*/**', "**/cmake_build/**", 'NAPA/**'
+        }
+        trimTrailingWhitespace()
+        leadingTabsToSpaces(2)
+        endWithNewline()
+    }
+}
+
+def nativeName = wpilibTools.platformMapper.platformPath
+ext.outputsFolder = file("$buildDir/outputs")
+
+println("Building for $nativeName")
+
+// The library CMake built into cmake_build (see README.md)
+tasks.register('copyNativeLibrary', Sync) {
+    from "${projectDir}/cmake_build/bin/"
+    from "${projectDir}/cmake_build/lib/"
+    into "${outputsFolder}/${nativeName}/shared/"
+    include "**/*.dll", "**/*.so", "**/*.dylib"
+    includeEmptyDirs = false
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    dependsOn copyNativeLibrary
+    // The tests load napa_jni from here
+    systemProperty 'napa.libraryDir', "${outputsFolder}/${nativeName}/shared"
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    testLogging {
+        events "passed", "failed"
+    }
+}
+
+apply from: "publish.gradle"

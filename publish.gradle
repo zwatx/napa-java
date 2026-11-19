@@ -1,0 +1,66 @@
+apply plugin: 'maven-publish'
+
+def nativeName = wpilibTools.platformMapper.wpilibClassifier;
+def artifactGroupId = 'org.photonvision'
+def baseArtifactId = "photon-napa"
+
+def license = file("$rootDir/LICENSE")
+def externalLicenses = file("$rootDir/ExternalLicenses")
+
+task nativeLibraryJar(type: Jar, dependsOn: copyNativeLibrary) {
+    archiveClassifier = nativeName
+    from outputsFolder
+    from license
+    from externalLicenses
+}
+build.dependsOn nativeLibraryJar
+
+jar {
+    from license
+    from externalLicenses
+}
+
+sourcesJar {
+    from license
+    from externalLicenses
+}
+
+javadocJar {
+    from license
+    from externalLicenses
+}
+
+publishing {
+    repositories {
+        maven {
+            url = 'https://maven.photonvision.org/' + (isDev ? 'snapshots' : 'releases')
+            credentials {
+                username = 'ghactions'
+                password = System.getenv("ARTIFACTORY_API_KEY")
+            }
+        }
+    }
+
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = artifactGroupId
+            artifactId = "${baseArtifactId}-java"
+            version = pubVersion;
+
+            from components.java
+        }
+        mavenJNI(MavenPublication) {
+            groupId = artifactGroupId
+            artifactId = "${baseArtifactId}-jni"
+            version = pubVersion;
+
+            artifact nativeLibraryJar
+        }
+    }
+}
+
+tasks.withType(PublishToMavenRepository) {
+    doFirst {
+        println("Publishing napa-java to " + repository.url)
+    }
+}
