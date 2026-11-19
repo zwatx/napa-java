@@ -1,0 +1,8 @@
+cppHeaderFileInclude {
+  \.h$
+}
+
+modifiableFileExclude {
+  NAPA/
+  gradle/
+}
