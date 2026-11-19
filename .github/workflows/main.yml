@@ -22,7 +22,8 @@ jobs:
             arch-name: linuxx86-64
           - os: ubuntu-24.04-arm
             arch-name: linuxarm64
-          - os: windows-latest
+          # Not windows-latest: its VS 2026 STL needs Clang 22, newer than the image's clang-cl
+          - os: windows-2025
             arch-name: windowsx86-64
             extra-flags: -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl
           - os: macos-latest
