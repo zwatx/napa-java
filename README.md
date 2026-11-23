@@ -32,12 +32,6 @@ To try a local build in PhotonVision, publish it with a version and point Photon
 ./gradlew -PversionString=dev-local publishToMavenLocal
 ```
 
-## Publishing
-
-CI publishes to PhotonVision's Maven on pushes to `main` and `v*` tags once the `ARTIFACTORY_API_KEY` secret is set;
-until then it only builds and tests. The version comes from the latest `v*` tag (`git describe`), so tag a release before
-setting the secret, or the first publish is `dev-unknown`.
-
 ## Updating NAPA
 
 Check out the new release in the `NAPA` submodule, rebuild, and run the tests. `NapaJNI.java` and `napa_jni.cpp`
